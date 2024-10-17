@@ -1,11 +1,6 @@
-import { findKeywords } from "./fetchKeyword";
-import { getCharacterInspiration } from "./getCharacterInspiration";
-import { getRandomName } from "./getRandomName";
-import { getWeather } from "./weather";
+import { fetchMenu } from './fetchMenu';
+import { createOrder } from './createOrder';
+import { retrieveOrder } from './retrieveOrder';
 
-export default {
-  getWeather: getWeather,
-  findKeywords: findKeywords,
-  getRandomName: getRandomName,
-  getCharacterInspiration: getCharacterInspiration,
-};
+export { fetchMenu, createOrder, retrieveOrder };
+

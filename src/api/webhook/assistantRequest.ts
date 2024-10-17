@@ -1,57 +1,106 @@
 import {
-  AssistantRequestMessageResponse,
   AssistantRequestPayload,
+  ServerMessageResponseAssistantRequest,
+  CreateAssistantDTO,
+  Model,
+  Voice,
+  Transcriber,
+  FirstMessageMode,
+  FunctionTool
 } from "../../types/vapi.types";
+import { Bindings } from "../../types/hono.types";
+import { getSystemPrompt } from '../../assistants/systemPrompt';
 
 export const assistantRequestHandler = async (
-  payload?: AssistantRequestPayload
-): Promise<AssistantRequestMessageResponse> => {
-  /**!SECTION
-   * Handle Business logic here.
-   * You can fetch your database to see if there is an existing assistant associated with this call. If yes, return the assistant.
-   * You can also fetch some params from your database to create the assistant and return it.
-   * You can have various predefined static assistant here and return them based on the call details.
-   */
+  payload: AssistantRequestPayload,
+  bindings: Bindings
+): Promise<ServerMessageResponseAssistantRequest> => {
+  try {
+    const customLLMUrl = `${bindings.NGROK_URL}/api/custom/openai`;
 
-  const assistant = payload.call
-    ? {
-        name: "Paula",
-        model: {
-          provider: "openai",
-          model: "gpt-3.5-turbo",
-          temperature: 0.7,
-          systemPrompt:
-            "You're Paula, an AI assistant who can help user draft beautiful emails to their clients based on the user requirements. Then Call sendEmail function to actually send the email.",
-          functions: [
-            {
-              name: "sendEmail",
-              description:
-                "Send email to the given email address and with the given content.",
+    const assistant: CreateAssistantDTO = {
+      name: "Mariana",
+      model: {
+        provider: "custom-llm",
+        url: customLLMUrl,
+        model: "gpt-4o-mini",
+        temperature: 0.5,
+        maxTokens: 150,
+        metadataSendMode: "off",
+        messages: [
+          {
+            role: "system",
+            content: await getSystemPrompt(bindings)
+          }
+        ],
+        tools: [
+          {
+            type: 'function',
+            function: {
+              name: 'createOrder',
+              description: 'Create a new order with specified items',
               parameters: {
-                type: "object",
+                type: 'object',
                 properties: {
-                  email: {
-                    type: "string",
-                    description: "Email to which we want to send the content.",
-                  },
-                  content: {
-                    type: "string",
-                    description: "Actual Content of the email to be sent.",
-                  },
+                  items: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        catalogObjectId: { type: 'string' },
+                        quantity: { type: 'string' }
+                      },
+                      required: ['catalogObjectId', 'quantity']
+                    }
+                  }
                 },
-                required: ["email"],
-              },
-            },
-          ],
-        },
-        voice: {
-          provider: "11labs",
-          voiceId: "paula",
-        },
-        firstMessage: "Hi, I'm Paula, your personal email assistant.",
-      }
-    : null;
-  if (assistant) return { assistant };
+                required: ['items']
+              }
+            }
+          } as FunctionTool
+        ]
+      } as Model,
+      voice: {
+        provider: "11labs",
+        model: "eleven_multilingual_v2",
+        voiceId: "OYTbf65OHHFELVut7v2H",
+        stability: 0.5,
+        similarityBoost: 0.75,
+        style: 0.5,
+        useSpeakerBoost: true,
+        optimizeStreamingLatency: 2
+      } as Voice,
+      messagePlan: {
+        idleTimeoutSeconds: 5,
+        idleMessageMaxSpokenCount: 2
+      },
+      transcriber: {
+        provider: "deepgram",
+        model: "nova-2-phonecall",
+        language: "en-US",
+        endpointing: 300,
+        smartFormat: true
+      } as Transcriber,
+      firstMessageMode: "assistant-speaks-first" as FirstMessageMode,
+      backgroundSound: "off",
+      startSpeakingPlan: {
+        waitSeconds: 0.4
+      },
+      maxDurationSeconds: 300,
+      backchannelingEnabled: false,
+      silenceTimeoutSeconds: 26,
+      backgroundDenoisingEnabled: true,
+      firstMessage: "Tic Taco. This is Mariana. Can I take your order?"
+    };
 
-  throw new Error(`Invalid call details provided.`);
+    // Only log the tools configuration
+    console.log('Assistant tools:', JSON.stringify(assistant.model.tools, null, 2));
+    
+    return { assistant };
+  } catch (error) {
+    console.error('Error in assistantRequestHandler:', error);
+    return { 
+      error: `Failed to create assistant: ${error instanceof Error ? error.message : 'Unknown error'}`
+    };
+  }
 };

@@ -1,49 +1,71 @@
 import { Hono } from "hono";
-import { VapiPayload, VapiWebhookEnum } from "../../types/vapi.types";
+import { 
+  StatusUpdatePayload, 
+  ToolCallsPayload,
+  VapiPayload, 
+  VapiWebhookEnum, 
+  AssistantRequestPayload, 
+  EndOfCallReportPayload, 
+  TranscriptPayload, 
+  HangPayload, 
+  SpeechUpdatePayload,
+  ConversationUpdatePayload
+} from "../../types/vapi.types";
 import { Bindings } from "../../types/hono.types";
 import { assistantRequestHandler } from "./assistantRequest";
 import { endOfCallReportHandler } from "./endOfCallReport";
-import { functionCallHandler } from "./functionCall";
+import { toolCallsHandler } from "./toolCalls";
 import { HangEventHandler } from "./hang";
 import { speechUpdateHandler } from "./speechUpdateHandler";
 import { statusUpdateHandler } from "./statusUpdate";
 import { transcriptHandler } from "./transcript";
+import { conversationUpdateHandler } from "./conversationUpdate";
 
 const app = new Hono<{ Bindings: Bindings }>();
 
 app.post("/", async (c) => {
-  const conversationUuid = c.req.query("conversation_uuid");
-
-  if (conversationUuid) {
-    // Fetch some data from the database and use it in the handlers.
-    console.log("conversationUuid", conversationUuid);
-  }
-
   try {
-    const reqBody: any = await c.req.json();
-    const payload: VapiPayload = reqBody.message;
-    switch (payload.type) {
-      case VapiWebhookEnum.FUNCTION_CALL:
-        console.log("func call");
-        return c.json(await functionCallHandler(payload), 201);
-      case VapiWebhookEnum.STATUS_UPDATE:
-        return c.json(await statusUpdateHandler(payload), 201);
+    const reqBody: { message: VapiPayload } = await c.req.json();
+    const payload = reqBody.message;
+    
+    if (!payload || typeof payload.type !== 'string') {
+      throw new Error("Invalid payload structure");
+    }
+
+    switch (payload.type as VapiWebhookEnum) {
+      case VapiWebhookEnum.TOOL_CALLS:
+        console.log("Handling TOOL_CALLS");
+        return c.json(await toolCallsHandler(payload as ToolCallsPayload, c.env), 201);
       case VapiWebhookEnum.ASSISTANT_REQUEST:
-        return c.json(await assistantRequestHandler(payload), 201);
+        console.log("Handling ASSISTANT_REQUEST");
+        return c.json(await assistantRequestHandler(payload as AssistantRequestPayload, c.env), 201);
+      case VapiWebhookEnum.CONVERSATION_UPDATE:
+        console.log("Handling CONVERSATION_UPDATE");
+        return c.json(await conversationUpdateHandler(payload as ConversationUpdatePayload), 201);
+      case VapiWebhookEnum.STATUS_UPDATE:
+        console.log("Handling STATUS_UPDATE");
+        return c.json(await statusUpdateHandler(payload as StatusUpdatePayload), 201);
       case VapiWebhookEnum.END_OF_CALL_REPORT:
-        await endOfCallReportHandler(payload);
-        return c.json({}, 201);
+        if ('endedReason' in payload && 'transcript' in payload) {
+          await endOfCallReportHandler(payload as EndOfCallReportPayload);
+          return c.json({}, 201);
+        }
+        throw new Error("Invalid END_OF_CALL_REPORT payload");
       case VapiWebhookEnum.SPEECH_UPDATE:
-        return c.json(await speechUpdateHandler(payload), 201);
+        console.log("Handling SPEECH_UPDATE");
+        return c.json(await speechUpdateHandler(payload as SpeechUpdatePayload), 201);
       case VapiWebhookEnum.TRANSCRIPT:
-        return c.json(await transcriptHandler(payload), 201);
+        console.log("Handling TRANSCRIPT");
+        return c.json(await transcriptHandler(payload as TranscriptPayload), 201);
       case VapiWebhookEnum.HANG:
-        return c.json(await HangEventHandler(payload), 201);
+        console.log("Handling HANG");
+        return c.json(await HangEventHandler(payload as HangPayload), 201);
       default:
-        throw new Error("Unhandled message type");
+        throw new Error(`Unhandled message type: ${payload.type}`);
     }
   } catch (error: any) {
-    return c.text(error.message, 500);
+    console.error("Error in webhook handler:", error);
+    return c.json({ error: error.message || "Unknown error" }, 500);
   }
 });
 

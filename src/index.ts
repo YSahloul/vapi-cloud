@@ -1,9 +1,7 @@
 import { Hono } from "hono";
 import { prettyJSON } from "hono/pretty-json";
-import { customLLMRoute } from "./api/custom-llm";
+import { openAIHandler } from "./api/custom/openai";
 import { functionCallRoute } from "./api/functions";
-import { inboundRoute } from "./api/inbound";
-import { outboundRoute } from "./api/outbound";
 import { webhookRoute } from "./api/webhook";
 import { Bindings } from "./types/hono.types";
 
@@ -16,11 +14,9 @@ app.get("/", (c) => {
   return c.text("Hello World!");
 });
 
-app.route("/api/inbound", inboundRoute);
-app.route("/api/outbound", outboundRoute);
 app.route("/api/webhook", webhookRoute);
-
 app.route("/api/functions", functionCallRoute);
-app.route("/api/custom-llm", customLLMRoute);
+app.route("/api/custom/openai", openAIHandler);
+console.log("OpenAI route registered");
 
 export default app;
