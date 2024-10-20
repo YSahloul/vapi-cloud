@@ -1,12 +1,17 @@
 import { Client, Environment } from 'square';
 import { Bindings } from '../types/hono.types';
 
+interface MenuItemVariation {
+  id: string;
+  name: string;
+  price: string;
+}
+
 interface MenuItem {
   id: string;
   name: string;
   description: string;
-  price: string;
-  variationId: string;
+  variations: MenuItemVariation[];
 }
 
 export async function fetchMenu(bindings: Bindings): Promise<MenuItem[]> {
@@ -30,8 +35,11 @@ export async function fetchMenu(bindings: Bindings): Promise<MenuItem[]> {
         id: item.id,
         name: item.itemData?.name ?? '',
         description: item.itemData?.description ?? '',
-        price: (item.itemData?.variations?.[0]?.itemVariationData?.priceMoney?.amount ?? 0).toString(),
-        variationId: item.itemData?.variations?.[0]?.id ?? '',
+        variations: item.itemData?.variations?.map((variation: any) => ({
+          id: variation.id,
+          name: variation.itemVariationData?.name ?? '',
+          price: (variation.itemVariationData?.priceMoney?.amount ?? 0).toString(),
+        })) ?? [],
       })) ?? [];
 
     console.log(`Fetched ${menuItems.length} menu items`);

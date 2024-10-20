@@ -9,7 +9,8 @@ import {
   TranscriptPayload, 
   HangPayload, 
   SpeechUpdatePayload,
-  ConversationUpdatePayload
+  ConversationUpdatePayload,
+  ServerMessageUserInterrupted
 } from "../../types/vapi.types";
 import { Bindings } from "../../types/hono.types";
 import { assistantRequestHandler } from "./assistantRequest";
@@ -20,6 +21,7 @@ import { speechUpdateHandler } from "./speechUpdateHandler";
 import { statusUpdateHandler } from "./statusUpdate";
 import { transcriptHandler } from "./transcript";
 import { conversationUpdateHandler } from "./conversationUpdate";
+import { userInterruptedHandler } from "./userInterrupted";
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -35,7 +37,9 @@ app.post("/", async (c) => {
     switch (payload.type as VapiWebhookEnum) {
       case VapiWebhookEnum.TOOL_CALLS:
         console.log("Handling TOOL_CALLS");
-        return c.json(await toolCallsHandler(payload as ToolCallsPayload, c.env), 201);
+        const toolCallResult = await toolCallsHandler(payload as ToolCallsPayload, c.env);
+        // This response is sent back to the assistant, which can then use it in the conversation
+        return c.json(toolCallResult, 201);
       case VapiWebhookEnum.ASSISTANT_REQUEST:
         console.log("Handling ASSISTANT_REQUEST");
         return c.json(await assistantRequestHandler(payload as AssistantRequestPayload, c.env), 201);
@@ -60,6 +64,9 @@ app.post("/", async (c) => {
       case VapiWebhookEnum.HANG:
         console.log("Handling HANG");
         return c.json(await HangEventHandler(payload as HangPayload), 201);
+      case VapiWebhookEnum.USER_INTERRUPTED:
+        console.log("Handling USER_INTERRUPTED");
+        return c.json(await userInterruptedHandler(payload as ServerMessageUserInterrupted), 201);
       default:
         throw new Error(`Unhandled message type: ${payload.type}`);
     }

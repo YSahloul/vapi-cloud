@@ -114,6 +114,7 @@ export enum VapiWebhookEnum {
   TRANSCRIPT = "transcript",
   CONVERSATION_UPDATE = "conversation-update",
   TOOL_CALLS = "tool-calls",
+  USER_INTERRUPTED = "user-interrupted",
 }
 
 export interface ConversationMessage {
@@ -183,7 +184,8 @@ export type VapiPayload =
   | TranscriptPayload
   | HangPayload
   | ConversationUpdatePayload
-  | ToolCallsPayload;
+  | ToolCallsPayload
+  | ServerMessageUserInterrupted;
 
 export interface ToolCallsPayload extends BaseVapiPayload {
   type: VapiWebhookEnum.TOOL_CALLS;
@@ -211,7 +213,8 @@ export type VapiResponse =
   | SpeechUpdateMessageResponse
   | TranscriptMessageResponse
   | ConversationUpdateMessageResponse
-  | ToolCallsMessageResponse;
+  | ToolCallsMessageResponse
+  | UserInterruptedMessageResponse;
 
 export interface CreateAssistantDTO {
   name?: string;
@@ -291,3 +294,11 @@ export interface FunctionToolWithToolCall {
   };
   toolCall: ToolCall;
 }
+
+export interface ServerMessageUserInterrupted extends BaseVapiPayload {
+  type: VapiWebhookEnum.USER_INTERRUPTED;
+  timestamp?: string;
+  artifact?: any; // Replace 'any' with a more specific type if available
+}
+
+export interface UserInterruptedMessageResponse {}

@@ -30,6 +30,7 @@ basicHandler.post("/", async (c) => {
         try {
           const result = await toolCallsHandler(payload as any, c.env);
           console.log("Tool calls result:", JSON.stringify(result, null, 2));
+          // This response is sent back to the assistant, which can then use it in the conversation
           return c.json(result, 201);
         } catch (error) {
           console.error("Error handling tool calls:", error);

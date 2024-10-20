@@ -4,6 +4,8 @@ export type Bindings = {
   VAPI_API_KEY: string;
   SQUARE_APPLICATION_ID: string;
   SQUARE_ACCESS_TOKEN: string;
-  NGROK_URL: string;
   SQUARE_LOCATION_ID: string;
+  CF_PAGES_URL: string;
+  CF_WORKER_DOMAIN: string;
+  BASE_URL: string;
 };
